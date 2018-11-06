@@ -13,3 +13,6 @@ buildNumber.properties
 
 .DS_Store
 .idea
+
+# akka persistance
+journal
