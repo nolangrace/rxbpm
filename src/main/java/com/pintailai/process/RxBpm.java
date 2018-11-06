@@ -188,7 +188,7 @@ public class RxBpm {
         @Override
         public String entityId(Object message) {
             if (message instanceof ProcessInstance.EntityEnvelope)
-                return String.valueOf(((ProcessInstance.EntityEnvelope) message).id);
+                return String.valueOf(((ProcessInstance.EntityEnvelope) message).instanceId);
             else if (message instanceof ProcessInstance.Get)
                 return String.valueOf(((ProcessInstance.Get) message).instanceId);
             else
@@ -207,7 +207,7 @@ public class RxBpm {
         public String shardId(Object message) {
             int numberOfShards = 100;
             if (message instanceof ProcessInstance.EntityEnvelope) {
-                long id = ((ProcessInstance.EntityEnvelope) message).id;
+                long id = ((ProcessInstance.EntityEnvelope) message).instanceId;
                 return String.valueOf(id % numberOfShards);
             } else if (message instanceof ProcessInstance.Get) {
                 long id = ((ProcessInstance.Get) message).instanceId;

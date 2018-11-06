@@ -15,6 +15,9 @@ import akka.pattern.Patterns;
 import akka.stream.ActorMaterializer;
 import akka.stream.javadsl.Flow;
 import akka.util.Timeout;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pintailai.messages.InstanceGetDataMessage;
+import com.pintailai.messages.InstanceReturnDataMessage;
 import com.pintailai.messages.InstanceStartMessage;
 import com.pintailai.messages.InstanceStartedMessage;
 import com.pintailai.process.RxBpm;
@@ -22,6 +25,7 @@ import org.camunda.bpm.model.bpmn.Bpmn;
 import scala.concurrent.Await;
 import scala.concurrent.Future;
 import akka.http.javadsl.marshallers.jackson.Jackson;
+import scala.util.parsing.json.JSONObject;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -82,34 +86,61 @@ public class RxBpmRestApi extends AllDirectives {
                 post(() ->
                         pathPrefix("instance", ()->
                             route(
-                                    path((String startEventId) ->
-                                        entity(Jackson.unmarshaller(Map.class), inputData -> {
-                                                Timeout timeout = Timeout.create(Duration.ofSeconds(5));
+                                    pathPrefix("start", ()->
+                                            route(
+                                                path((String startEventId) ->
+                                                    entity(Jackson.unmarshaller(Map.class), inputData -> {
+                                                            Timeout timeout = Timeout.create(Duration.ofSeconds(5));
 
-                                                if(inputData==null)
-                                                    inputData = new HashMap();
+                                                            if(inputData==null)
+                                                                inputData = new HashMap();
 
-                                                // create new instance Actor
-                                                ActorRef requestActor = system.actorOf(RestRequestActor.props()
-                                                        , "RestRequest-"+ UUID.randomUUID().toString());
+                                                            // create new instance Actor
+                                                            ActorRef requestActor = system.actorOf(RestRequestActor.props()
+                                                                    , "RestRequest-"+ UUID.randomUUID().toString());
 
-                                                Future<Object> future = Patterns.ask(requestActor, InstanceStartMessage
-                                                        .createMessage(inputData, startEventId,
-                                                                Bpmn.convertToString(rxbpm.getModel()), null), timeout);
-                                                String result = "";
-                                                try {
-                                                    InstanceStartedMessage message = (InstanceStartedMessage)
-                                                            Await.result(future, timeout.duration());
-                                                    result = "Instance "+message.instanceId+" was created successfully";
-                                                } catch (Exception e) {
-                                                    e.printStackTrace();
-                                                    result = "Request timed out";
-                                                }
+                                                            Future<Object> future = Patterns.ask(requestActor, InstanceStartMessage
+                                                                    .createMessage(inputData, startEventId,
+                                                                            Bpmn.convertToString(rxbpm.getModel()), null), timeout);
+                                                            String result = "";
+                                                            try {
+                                                                InstanceStartedMessage message = (InstanceStartedMessage)
+                                                                        Await.result(future, timeout.duration());
+                                                                result = "Instance "+message.instanceId+" was created successfully";
+                                                            } catch (Exception e) {
+                                                                e.printStackTrace();
+                                                                result = "Request timed out";
+                                                            }
 
-                                                return complete(result);
-                                            }
-                                        )
-                                    )
+                                                            return complete(result);
+                                                        }
+                                                    )
+                                                )
+                                            )
+                                    ),
+                                    path((String instanceId) -> {
+                                        Timeout timeout = Timeout.create(Duration.ofSeconds(5));
+
+                                        // create new instance Actor
+                                        ActorRef requestActor = system.actorOf(RestRequestActor.props()
+                                                , "RestRequest-"+ UUID.randomUUID().toString());
+
+                                        Future<Object> future = Patterns.ask(requestActor,
+                                            InstanceGetDataMessage.createMessage(Long.parseLong(instanceId), null), timeout);
+
+                                        String result = "";
+                                        try {
+                                            InstanceReturnDataMessage message = (InstanceReturnDataMessage)
+                                                    Await.result(future, timeout.duration());
+
+                                            result = message.instanceData.toString();
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                            result = "Request timed out";
+                                        }
+
+                                        return complete(result);
+                                    })
                             )
                         )
                 )

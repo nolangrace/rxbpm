@@ -6,11 +6,8 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.persistence.AbstractPersistentActor;
 
-import com.pintailai.messages.FlowNodeCompleteMessage;
-import com.pintailai.messages.FlowNodeStartMessage;
-import com.pintailai.messages.InstanceStartMessage;
+import com.pintailai.messages.*;
 
-import com.pintailai.messages.InstanceStartedMessage;
 import org.camunda.bpm.model.bpmn.Bpmn;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
@@ -21,16 +18,13 @@ import org.camunda.bpm.model.bpmn.instance.StartEvent;
 import java.io.ByteArrayInputStream;
 import java.io.Serializable;
 import java.time.Duration;
-import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 
 public class ProcessInstance extends AbstractPersistentActor {
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
     private final ActorSystem system = getContext().getSystem();
     private BpmnModelInstance process;
-    private Random random = new Random();
-    private long instanceId = random.nextLong();
+    private long instanceId;
     private Map instanceData;
 
     public static class Get {
@@ -42,11 +36,11 @@ public class ProcessInstance extends AbstractPersistentActor {
     }
 
     public static class EntityEnvelope implements Serializable {
-        final public long id;
+        final public long instanceId;
         final public Object payload;
 
-        public EntityEnvelope(long id, Object payload) {
-            this.id = id;
+        public EntityEnvelope(long instanceId, Object payload) {
+            this.instanceId = instanceId;
             this.payload = payload;
         }
     }
@@ -59,24 +53,38 @@ public class ProcessInstance extends AbstractPersistentActor {
     @Override
     public void preStart() throws Exception {
         super.preStart();
-        getContext().setReceiveTimeout(Duration.ofSeconds(10));
+        getContext().setReceiveTimeout(Duration.ofSeconds(5));
     }
 
-    void updateState(FlowNodeCompleteMessage completeMessage) {
-        // map output data to instance data
-        Map outputData = completeMessage.data;
-        outputData.keySet().forEach(key -> {
+    void setupInstance(InstanceStartEvnt e) {
+        instanceId = e.instanceId;
+
+        process = Bpmn.readModelFromStream(
+                new ByteArrayInputStream(e.processModelString.getBytes()));
+
+        instanceData = e.data;
+    }
+
+    void updateState(TaskCompleteEvnt e) {
+        Map data = e.data;
+
+        if(instanceData == null)
+            instanceData = new HashMap();
+
+        data.keySet().forEach(key -> {
             if(instanceData.containsKey(key))
-                instanceData.replace(key, outputData.get(key));
+                instanceData.replace(key, data.get(key));
             else
-                instanceData.put(key, outputData.get(key));
+                instanceData.put(key, data.get(key));
         });
     }
 
     @Override
     public Receive createReceiveRecover() {
+        log.info("Recovering instance");
         return receiveBuilder()
-                .match(FlowNodeCompleteMessage.class, this::updateState)
+                .match(InstanceStartEvnt.class, this::setupInstance)
+                .match(TaskCompleteEvnt.class,this::updateState)
                 .build();
     }
 
@@ -84,32 +92,45 @@ public class ProcessInstance extends AbstractPersistentActor {
     public Receive createReceive() {
         return receiveBuilder()
                 .match(InstanceStartMessage.class, message -> {
-                    log.info("Process Instance received request to start new instance");
-                    getSender().tell(InstanceStartedMessage.createMessage(instanceId, message.originator),getSender());
+                    if(instanceId != 0) {
+                        getSender().tell(InstanceStartMessage.createMessage(message.data, message.startEventId,
+                                message.processModelString, message.originator), message.originator);
+                    }
+                    else {
 
-                    process = Bpmn.readModelFromStream(
-                            new ByteArrayInputStream(message.processModelString.getBytes()));
+                        InstanceStartEvnt evnt = new InstanceStartEvnt(message.instanceId,message.data,
+                                message.processModelString);
+                        persist(evnt, (e) -> {
+                            setupInstance(e);
 
-                    StartEvent startEvent = process.getModelElementById(message.startEventId);
+                            log.info("Process Instance received request to start new instance instanceId:" + instanceId);
+                            message.originator.tell(InstanceStartedMessage.createMessage(instanceId, message.originator), getSender());
 
-                    instanceData = message.data;
+                            StartEvent startEvent = process.getModelElementById(message.startEventId);
 
-                    createAndTriggerFlowNodeActor(startEvent.getId());
+                            createAndTriggerFlowNodeActor(startEvent.getId());
+                        });
+                    }
                 })
                 .match(FlowNodeCompleteMessage.class, this::receiveFlowNodeComplete)
+                .match(InstanceGetDataMessage.class, this::getInstanceData)
                 .matchEquals(ReceiveTimeout.getInstance(), msg -> passivate())
                 .matchAny(o -> log.info("received unknown message"))
                 .build();
     }
 
     private void receiveFlowNodeComplete(FlowNodeCompleteMessage completeMessage){
-        persist(completeMessage, this::updateState);
 
-        // create task actor for each nextflownode
-        // if end event check active tasks list if not more active tasks (Not sure what to do)
-        // options: keep instance in memory to get data(passivation) or delete actor
-        completeMessage.getNextFlowNodes()
-                .forEach(fnId -> createAndTriggerFlowNodeActor(fnId));
+        TaskCompleteEvnt evnt = new TaskCompleteEvnt(completeMessage.data, completeMessage.getNextFlowNodes());
+        persist(evnt, (e) -> {
+            updateState(e);
+
+            // create task actor for each nextflownode
+            // if end event check active tasks list if not more active tasks (Not sure what to do)
+            // options: keep instance in memory to get data(passivation) or delete actor
+            completeMessage.getNextFlowNodes()
+                    .forEach(fnId -> createAndTriggerFlowNodeActor(fnId));
+        });
     }
 
     private void createAndTriggerFlowNodeActor(String fnId){
@@ -140,9 +161,38 @@ public class ProcessInstance extends AbstractPersistentActor {
         }
     }
 
+    private void getInstanceData(InstanceGetDataMessage message) {
+        log.info("Get Instance Data From Instance:"+instanceId+" Data:"+instanceData.toString());
+        message.originator.tell(InstanceReturnDataMessage.createMessage(instanceData, message.originator), getSelf());
+    }
+
     private void passivate() {
         log.info("Passivate instance "+instanceId);
         getContext().getParent().tell(
                 new ShardRegion.Passivate(PoisonPill.getInstance()), getSelf());
+    }
+}
+
+class InstanceStartEvnt implements Serializable {
+    private static final long serialVersionUID = 1L;
+    public final Map data;
+    public final long instanceId;
+    public final String processModelString;
+
+    public InstanceStartEvnt(long instanceId, Map data, String processModelString) {
+        this.instanceId = instanceId;
+        this.data = data;
+        this.processModelString = processModelString;
+    }
+}
+
+class TaskCompleteEvnt implements Serializable {
+    private static final long serialVersionUID = 1L;
+    public final Map data;
+    public final ArrayList<String> nextFlowNodes;
+
+    public TaskCompleteEvnt(Map data, ArrayList<String> nextFlowNodes) {
+        this.data = data;
+        this.nextFlowNodes = nextFlowNodes;
     }
 }

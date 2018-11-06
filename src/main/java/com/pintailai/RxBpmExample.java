@@ -23,7 +23,7 @@ public class RxBpmExample {
             List seedNodes = new ArrayList<Address>();
 //            seedNodes.add(new Address("akka.tcp", "RXBPM", "localhost", 2554));
 
-            String[] ports = new String[] { "2551" , "2552"};
+            String[] ports = new String[] { "2551" };
 
 
             RxBpm rxbpm = new RxBpm("bpm-simple.bpmn", seedNodes, ports);

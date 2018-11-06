@@ -18,9 +18,23 @@ public class InstanceStartMessage extends AbstractMessage {
         return new InstanceStartMessage(inputData, startEventId, processModelString, originator);
     }
 
+    public static InstanceStartMessage createMessage(long instanceId, Map inputData, String startEventId, String processModelString,
+                                                     ActorRef originator){
+        return new InstanceStartMessage(instanceId, inputData, startEventId, processModelString, originator);
+    }
+
     private InstanceStartMessage(Map inputData, String startEventId, String processModelString, ActorRef originator){
         super(inputData);
         this.instanceId = new Random().nextLong();
+        this.startEventId = startEventId;
+
+        this.originator = originator;
+        this.processModelString = processModelString;
+    }
+
+    private InstanceStartMessage(long instanceId, Map inputData, String startEventId, String processModelString, ActorRef originator){
+        super(inputData);
+        this.instanceId = instanceId;
         this.startEventId = startEventId;
 
         this.originator = originator;
