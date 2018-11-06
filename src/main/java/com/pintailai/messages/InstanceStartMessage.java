@@ -1,29 +1,29 @@
 package com.pintailai.messages;
 
+import akka.actor.ActorRef;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
-import org.camunda.bpm.model.bpmn.instance.StartEvent;
 
 import java.util.Map;
+import java.util.Random;
+import java.util.UUID;
 
 public class InstanceStartMessage extends AbstractMessage {
-    private BpmnModelInstance process;
-    private StartEvent startEvent;
+    public final String startEventId;
+    public final long instanceId;
+    public final ActorRef originator;
+    public final String processModelString;
 
-    public static InstanceStartMessage createMessage(Map inputData, BpmnModelInstance process, StartEvent startEvent){
-        return new InstanceStartMessage(inputData, process, startEvent);
+    public static InstanceStartMessage createMessage(Map inputData, String startEventId, String processModelString,
+                                                     ActorRef originator){
+        return new InstanceStartMessage(inputData, startEventId, processModelString, originator);
     }
 
-    private InstanceStartMessage(Map inputData, BpmnModelInstance process, StartEvent startEvent){
+    private InstanceStartMessage(Map inputData, String startEventId, String processModelString, ActorRef originator){
         super(inputData);
-        this.process = process;
-        this.startEvent = startEvent;
-    }
+        this.instanceId = new Random().nextLong();
+        this.startEventId = startEventId;
 
-    public BpmnModelInstance getProcess() {
-        return process;
-    }
-
-    public StartEvent getStartEvent() {
-        return startEvent;
+        this.originator = originator;
+        this.processModelString = processModelString;
     }
 }

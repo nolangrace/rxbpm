@@ -1,20 +1,13 @@
 package com.pintailai.flownode;
 
 import akka.actor.Props;
-import akka.event.Logging;
-import akka.event.LoggingAdapter;
 import com.pintailai.messages.FlowNodeCompleteMessage;
 import com.pintailai.messages.FlowNodeStartMessage;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class InternalTaskInstance extends AbstractFlowNodeInstance {
 
@@ -30,24 +23,29 @@ public class InternalTaskInstance extends AbstractFlowNodeInstance {
     public final Receive createReceive() {
         return receiveBuilder()
                 .match(FlowNodeStartMessage.class, (startMessage) -> {
-                    log.info("Starting Task with input data: "+startMessage.getData().toString()+" For class:"+className);
+                    log.info("Starting Task with input data: "+startMessage.data.toString()+" For class:"+className);
 
-//                    try {
-//                        Class c = Class.forName(className);
-//
-//                        Method method = c.getMethod("execute", Map.class);
-//                        Map outputData = (Map)method.invoke(c.newInstance(), startMessage.getData());
-//                        log.info("Task Completed with output Data: "+outputData.toString());
-//                    } catch (ClassNotFoundException e) {
-//                        log.error("Class Not found error: {}",e);
-//                    } catch (NoSuchMethodException e){
-//                        log.error("No Such Mehtod Error: {}",e);
-//                    } catch (Error e) {
-//                        log.error("Error: {}",e);
-//                    }
+                    Map outputData = startMessage.data;
+                    if(className != "" && className!=null) {
+                        try {
+                            Class c = Class.forName(className);
+
+                            Method method = c.getMethod("execute", Map.class);
+                            outputData = (Map) method.invoke(c.newInstance(), startMessage.data);
+                            log.info("Task Completed with output Data: " + outputData.toString());
+                        } catch (ClassNotFoundException e) {
+                            log.error("Class Not found error: {}", e);
+                        } catch (NoSuchMethodException e) {
+                            log.error("No Such Mehtod Error: {}", e);
+                        } catch (Error e) {
+                            log.error("Error: {}", e);
+                        }
+                    }
+
+
 
                     getSender().tell(FlowNodeCompleteMessage
-                            .createMessage(startMessage.getData(),identifyNextFlowNode()),getSelf());
+                            .createMessage(outputData,identifyNextFlowNodes()),getSelf());
 
                 })
                 .matchAny(o -> log.info("received unknown message"))

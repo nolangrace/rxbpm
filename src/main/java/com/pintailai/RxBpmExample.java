@@ -1,23 +1,32 @@
 package com.pintailai;
 
 import akka.actor.ActorSystem;
+import akka.actor.Address;
+import akka.remote.artery.aeron.TaskRunner;
 import com.pintailai.process.RxBpm;
 
-import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class RxBpmExample {
     public static void main(String[] args){
 
-        ActorSystem system = ActorSystem.create("rxbpm");;
         try {
 
-            Map inputData = new HashMap<String, Object>();
-            inputData.put("One", 1);
-            inputData.put("Two", 2);
+//            Map inputData = new HashMap<String, Object>();
+//            inputData.put("One", 1);
+//            inputData.put("Two", 2);
             //initialize engine w/ one task diagram
-            RxBpm rxbpm = new RxBpm("bpm-simple.bpmn");
+
+            List seedNodes = new ArrayList<Address>();
+//            seedNodes.add(new Address("akka.tcp", "RXBPM", "localhost", 2554));
+
+            String[] ports = new String[] { "2551" , "2552"};
+
+
+            RxBpm rxbpm = new RxBpm("bpm-simple.bpmn", seedNodes, ports);
 
 
 //            rxbpm.createInstance("StartEvent_1", inputData);
@@ -28,7 +37,6 @@ public class RxBpmExample {
 
             //validate outputs
         }finally {
-            system.terminate();
         }
     }
 }

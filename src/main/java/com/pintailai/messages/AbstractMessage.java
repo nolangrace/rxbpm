@@ -1,18 +1,12 @@
 package com.pintailai.messages;
 
-import org.camunda.bpm.model.bpmn.instance.FlowNode;
-
-import java.util.ArrayList;
+import java.io.Serializable;
 import java.util.Map;
 
-public class AbstractMessage {
-    private Map data;
+public class AbstractMessage implements Serializable {
+    public final Map data;
 
     protected AbstractMessage(Map data){
         this.data = data;
-    }
-
-    public Map getData() {
-        return data;
     }
 }

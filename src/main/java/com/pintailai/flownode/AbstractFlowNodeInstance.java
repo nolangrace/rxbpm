@@ -1,17 +1,14 @@
 package com.pintailai.flownode;
 
 import akka.actor.AbstractActor;
-import akka.actor.Props;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
 import org.camunda.bpm.model.xml.type.attribute.Attribute;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 public abstract class AbstractFlowNodeInstance extends AbstractActor {
@@ -41,10 +38,10 @@ public abstract class AbstractFlowNodeInstance extends AbstractActor {
     @Override
     public abstract Receive createReceive();
 
-    protected ArrayList<FlowNode> identifyNextFlowNode(){
-        ArrayList<FlowNode> nextFlowNodes = (ArrayList)fn.getOutgoing().stream().map((flow) -> {
-            return flow.getTarget();
-        }).collect(Collectors.toList());
+    protected ArrayList<String> identifyNextFlowNodes(){
+        ArrayList<String> nextFlowNodes = (ArrayList)fn.getOutgoing().stream()
+                .map((flow) -> flow.getTarget().getId())
+                .collect(Collectors.toList());
 
         return nextFlowNodes;
     };

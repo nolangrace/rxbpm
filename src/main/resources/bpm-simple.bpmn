@@ -32,9 +32,9 @@
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
       <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
-        <dc:Bounds x="173" y="102" width="36" height="36" />
+        <dc:Bounds x="159" y="145" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="180" y="145" width="22" height="14" />
+          <dc:Bounds x="166" y="188" width="22" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="EndEvent_1dr1oqu_di" bpmnElement="EndEvent_1dr1oqu">
@@ -44,12 +44,10 @@
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="SequenceFlow_1iuoeqi_di" bpmnElement="SequenceFlow_1iuoeqi">
-        <di:waypoint x="209" y="120" />
-        <di:waypoint x="240" y="120" />
-        <di:waypoint x="240" y="163" />
+        <di:waypoint x="195" y="163" />
         <di:waypoint x="271" y="163" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="242" y="138" width="27" height="14" />
+          <dc:Bounds x="223" y="150" width="27" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="ExclusiveGateway_1ydu0bp_di" bpmnElement="ExclusiveGateway_1ydu0bp" isMarkerVisible="true">

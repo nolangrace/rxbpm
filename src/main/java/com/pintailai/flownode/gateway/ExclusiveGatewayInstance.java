@@ -2,19 +2,15 @@ package com.pintailai.flownode.gateway;
 
 import akka.actor.Props;
 import com.pintailai.flownode.AbstractFlowNodeInstance;
-import com.pintailai.flownode.InternalTaskInstance;
 import com.pintailai.messages.FlowNodeCompleteMessage;
 import com.pintailai.messages.FlowNodeStartMessage;
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
-import groovy.util.Eval;
 import org.camunda.bpm.model.bpmn.BpmnModelInstance;
 import org.camunda.bpm.model.bpmn.instance.ExclusiveGateway;
 import org.camunda.bpm.model.bpmn.instance.FlowNode;
 import org.camunda.bpm.model.bpmn.instance.SequenceFlow;
 
-import javax.tools.JavaCompiler;
-import javax.tools.ToolProvider;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
@@ -32,10 +28,10 @@ public class ExclusiveGatewayInstance extends AbstractFlowNodeInstance {
     public final Receive createReceive() {
         return receiveBuilder()
                 .match(FlowNodeStartMessage.class, (startMessage) -> {
-                    log.info("Starting Gateway with input data: "+startMessage.getData().toString()+" For Gateway:"+fn.getName());
+                    log.info("Starting Gateway with input data: "+startMessage.data.toString()+" For Gateway:"+fn.getName());
 
                     getSender().tell(FlowNodeCompleteMessage
-                            .createMessage(startMessage.getData(),identifyNextFlowNode()),getSelf());
+                            .createMessage(startMessage.data,identifyNextFlowNodes()),getSelf());
 
                 })
                 .matchAny(o -> log.info("received unknown message"))
@@ -43,7 +39,7 @@ public class ExclusiveGatewayInstance extends AbstractFlowNodeInstance {
     }
 
     @Override
-    protected ArrayList<FlowNode> identifyNextFlowNode(){
+    protected ArrayList<String> identifyNextFlowNodes(){
         ExclusiveGateway exclusiveGateway = (ExclusiveGateway) fn;
 
         ArrayList<SequenceFlow> sequenceFlows = null;
@@ -66,9 +62,9 @@ public class ExclusiveGatewayInstance extends AbstractFlowNodeInstance {
             sequenceFlows.add(exclusiveGateway.getDefault());
         }
 
-        ArrayList<FlowNode> nextFlowNodes = (ArrayList<FlowNode>) sequenceFlows.stream().map(sequenceFlow -> {
-            return sequenceFlow.getTarget();
-        }).collect(Collectors.toList());
+        ArrayList<String> nextFlowNodes = (ArrayList<String>) sequenceFlows.stream()
+                .map(sequenceFlow -> sequenceFlow.getTarget().getId())
+                .collect(Collectors.toList());
 
         return nextFlowNodes;
     }

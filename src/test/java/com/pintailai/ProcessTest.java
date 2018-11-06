@@ -13,14 +13,14 @@ public class ProcessTest {
         ActorSystem system = ActorSystem.create("rxbpm");;
         try {
 
-            Map inputData = new HashMap<String, Object>();
-            inputData.put("One", 1);
-            inputData.put("Two", 2);
+//            Map inputData = new HashMap<String, Object>();
+//            inputData.put("One", 1);
+//            inputData.put("Two", 2);
             //initialize engine w/ one task diagram
-            RxBpm rxbpm = new RxBpm("bpm-simple.bpmn");
+//            RxBpm rxbpm = new RxBpm("bpm-simple.bpmn");
 
 
-            rxbpm.createInstance("StartEvent_1", inputData);
+//            rxbpm.createInstance("StartEvent_1", inputData);
 
             //create instance
 

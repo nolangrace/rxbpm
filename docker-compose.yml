@@ -4,14 +4,16 @@ services:
     build: .
     hostname: bpmrx-seed
     environment:
-    - RXBPM_SEED_NODES=bpmrx-seed
-
-  bpm-rx:
-    build: .
-    hostname: bpm-rx
-    depends_on:
-      - bpmrx-seed
-    environment:
       - RXBPM_SEED_NODES=bpmrx-seed
-    links:
-    - bpmrx-seed
+    ports:
+      - "8080:8080"
+
+#  bpm-rx:
+#    build: .
+#    hostname: bpm-rx
+#    depends_on:
+#      - bpmrx-seed
+#    environment:
+#      - RXBPM_SEED_NODES=bpmrx-seed
+#    links:
+#    - bpmrx-seed
